@@ -1,0 +1,56 @@
+# On merge: quick deploy the job the PR already validated, so tests are not run twice.
+# Falls back to a full deploy when there is no usable validation (expired, or the org changed since).
+name: Deploy
+
+on:
+  push:
+    branches: [test, main]
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # The prod environment can require a named reviewer: the last human approval before production.
+    environment: ${{ github.ref_name == 'main' && 'prod' || 'test' }}
+    concurrency:
+      group: deploy-${{ github.ref_name }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --global @salesforce/cli
+      - name: Authenticate as the integration user (JWT)
+        env:
+          SF_JWT_KEY: ${{ secrets.SF_JWT_KEY }}
+        run: |
+          printf '%s' "$SF_JWT_KEY" > server.key
+          sf org login jwt --client-id "${{ vars.SF_CLIENT_ID }}" --username "${{ vars.SF_USERNAME }}" \
+            --jwt-key-file server.key --instance-url "${{ vars.SF_INSTANCE_URL }}" --alias target
+          rm -f server.key
+      - name: Find the validated job of the merged PR
+        id: find
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          pr=$(gh api "repos/${{ github.repository }}/commits/${{ github.sha }}/pulls" --jq '.[0].number // empty')
+          [ -n "$pr" ] || { echo "no PR for this commit"; exit 0; }
+          head=$(gh pr view "$pr" --repo "${{ github.repository }}" --json headRefName --jq .headRefName)
+          run=$(gh run list --repo "${{ github.repository }}" --workflow pr-validate.yml --branch "$head" \
+                --status success --limit 1 --json databaseId --jq '.[0].databaseId // empty')
+          [ -n "$run" ] || { echo "no successful validation for $head"; exit 0; }
+          gh run download "$run" --repo "${{ github.repository }}" --name validated-job-id
+          echo "job=$(cat validated-job-id.txt)" >> "$GITHUB_OUTPUT"
+      - name: Quick deploy the validated job
+        id: quick
+        if: steps.find.outputs.job != ''
+        continue-on-error: true
+        run: sf project deploy quick --job-id "${{ steps.find.outputs.job }}" --target-org target --wait 30
+      - name: Full deploy with tests (no usable validation)
+        if: steps.find.outputs.job == '' || steps.quick.outcome == 'failure'
+        run: sf project deploy start --source-dir force-app --target-org target --test-level RunLocalTests --wait 30

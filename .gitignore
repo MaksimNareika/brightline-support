@@ -1,0 +1,10 @@
+.sf/
+.sfdx/
+.localdevserver/
+node_modules/
+coverage/
+*.key
+.env
+.env.*
+.claude/settings.local.json
+.DS_Store

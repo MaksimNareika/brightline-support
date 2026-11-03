@@ -1,0 +1,13 @@
+{
+  "name": "brightline-support",
+  "private": true,
+  "version": "1.0.0",
+  "description": "FDE University demo Salesforce project",
+  "scripts": {
+    "test:unit": "sfdx-lwc-jest --passWithNoTests",
+    "test:unit:coverage": "sfdx-lwc-jest --coverage --passWithNoTests"
+  },
+  "devDependencies": {
+    "@salesforce/sfdx-lwc-jest": "^7.0.1"
+  }
+}
