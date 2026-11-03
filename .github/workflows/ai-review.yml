@@ -17,25 +17,24 @@ jobs:
     # Forks get no secrets anyway; say it explicitly rather than rely on it.
     if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - uses: anthropics/claude-code-action@v1
         with:
+          # One of the two is set as a repository secret; the other stays empty.
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # The workflow's own token: no GitHub App install needed, and it can only do what
+          # `permissions:` above grants — read code, comment on the PR.
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           prompt: |
-            Review pull request #${{ github.event.pull_request.number }} in ${{ github.repository }}.
-
-            Read CLAUDE.md for the project's conventions. If the PR adds sdlc/GH-<n>/, read
-            00-context.md (acceptance criteria) and 10-plan.md, and judge the diff against them.
-
-            Report only what the automated gates cannot catch: an AC the code does not meet, logic
-            that is wrong for a mix of records, a convention from CLAUDE.md broken, a test that
-            asserts the implementation instead of the business rule. Every finding cites file:line.
-            Code Analyzer, deploy validation and the risk scan already run; do not repeat them.
-
-            Post one PR comment with gh pr comment. If there is nothing to report, say so in one line.
+            Review pull request #${{ github.event.pull_request.number }} in ${{ github.repository }}
+            against REVIEW.md. Read CLAUDE.md for conventions. If the PR adds sdlc/GH-<n>/, read
+            00-context.md and 10-plan.md there and judge the diff against them.
+            Post exactly one comment with gh pr comment, in the format REVIEW.md gives.
           claude_args: >-
             --model claude-sonnet-5-5
             --max-turns 25

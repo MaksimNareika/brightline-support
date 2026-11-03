@@ -1,15 +1,4 @@
 {
-  "extraKnownMarketplaces": {
-    "fde-sdlc": {
-      "source": {
-        "source": "directory",
-        "path": "../sf-sdlc-plugins"
-      }
-    }
-  },
-  "enabledPlugins": {
-    "sf-sdlc@fde-sdlc": true
-  },
   "permissions": {
     "deny": [
       "Read(./.env)",
@@ -26,8 +15,8 @@
       "Bash(git push *)",
       "Bash(gh pr create *)",
       "Bash(gh issue create *)",
-      "Bash(gh issue edit *)",
-      "Bash(sf org create scratch *)"
+      "Bash(gh issue edit *)"
     ]
-  }
+  },
+  "enabledMcpjsonServers": ["playwright"]
 }

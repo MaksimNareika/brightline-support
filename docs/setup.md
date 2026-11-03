@@ -25,16 +25,42 @@ In **both** orgs:
   System Administrator. In a real project this user gets a deploy-only permission set; in a
   Developer Edition org System Administrator is the practical option — say so in the lecture.
 
-In **`fde-prod` only**: Setup → Dev Hub → Enable Dev Hub.
+No Dev Hub is needed: the agent builds in `fde-test` directly.
 
 ## 2. Authorise locally
 
 ```bash
-sf org login web --alias fde-prod --set-default-dev-hub
-sf alias set fde-devhub=<fde-prod username>
+sf org login web --alias fde-prod
 sf org login web --alias fde-test
 sf config set target-org=fde-test   # never fde-prod as the default
 ```
+
+Put `fde-test`'s instance URL (Setup → My Domain, e.g. `https://<name>-dev-ed.develop.my.salesforce.com`)
+into the Orgs table in `CLAUDE.md`. It is not a secret; the agent uses it to open record pages.
+
+## 2b. Claude access
+
+Use an **EPAM-provided** Claude credential for both the local session and CI. Not a client one: in
+the daily profile `ANTHROPIC_BASE_URL` points at a client AI gateway, which would route and bill the
+lecture through the client. In the demo profile check:
+
+```bash
+env | grep -E '^ANTHROPIC_|^CLAUDE_CODE_USE_' | cut -d= -f1   # names only; expect nothing client-specific
+claude auth status
+```
+
+For CI, store **one** of these as a repository secret: `ANTHROPIC_API_KEY` (an API key) or
+`CLAUDE_CODE_OAUTH_TOKEN` (from `claude setup-token`, tied to the person who generated it).
+
+## 2c. Browser for the in-org check
+
+```bash
+npx -y @playwright/mcp@0.0.83 --help >/dev/null && echo ok
+```
+
+Start Claude Code in `brightline-support/`, approve the `playwright` server, ask it to open the
+`fde-test` login page, and log in by hand once. The profile persists, so the agent later reuses the
+session without ever seeing the password or a session URL.
 
 ## 3. JWT for CI
 
@@ -76,8 +102,9 @@ In `brightline-support` → Settings:
 |---|---|
 | Environments → `test` | vars `SF_CLIENT_ID`, `SF_USERNAME`, `SF_INSTANCE_URL` (`https://login.salesforce.com`); secret `SF_JWT_KEY` (contents of `server.key`) |
 | Environments → `prod` | the same for `fde-prod`; **Required reviewers: you** — the last human gate before production |
-| Secrets → Actions | `ANTHROPIC_API_KEY` for the AI review job |
-| Branches → `test`, `main` | require a PR; require status checks `static` and `validate`; no direct pushes, no force-push |
+| Secrets → Actions | `ANTHROPIC_API_KEY` **or** `CLAUDE_CODE_OAUTH_TOKEN` for the AI review job (step 2b) |
+| Actions → General | Actions enabled; `anthropics/claude-code-action` allowed if the org restricts third-party actions |
+| Branches → `test`, `main` | require a PR; require status checks `static` and `validate`; no direct pushes, no force-push. The first PR must run once before GitHub offers the check names |
 | Labels | `feature`, `bug`, `permissions-reviewed` |
 
 ## 5. Seed the orgs
@@ -96,19 +123,21 @@ These three deploys are done by you, by hand, once. From here on, only CI deploy
 
 ## 6. Plugin
 
-From `brightline-support/`, start Claude Code and trust the folder: `.claude/settings.json` declares
-the `fde-sdlc` marketplace and enables `sf-sdlc`. Or explicitly:
+The project does **not** auto-enable the plugin, so installing it is a step in the demo:
 
-```bash
-claude plugin marketplace add ../sf-sdlc-plugins
-claude plugin install sf-sdlc@fde-sdlc
+```text
+/plugin marketplace add <epam-org>/sf-sdlc-plugins
+/plugin install sf-sdlc@fde-sdlc
+/reload-plugins
 ```
 
-Once `sf-sdlc-plugins` is on GitHub, change the marketplace source in `.claude/settings.json` to
-`{"source": "github", "repo": "<epam-org>/sf-sdlc-plugins"}`.
-
 Check: `/plugins` lists `sf-sdlc`; `/agents` lists the nine `sdlc-*` agents; asking the agent to run
-`sf project deploy start --target-org fde-test --source-dir force-app` is blocked by the guard.
+`sf project deploy start --target-org fde-prod --source-dir force-app` is blocked by the guard.
+Uninstall again before the lecture (`/plugin uninstall sf-sdlc@fde-sdlc`) so the live install is real.
+
+For a team, the same install goes into `.claude/settings.json` as `extraKnownMarketplaces` +
+`enabledPlugins`, and everyone who trusts the folder is prompted to install it — show that on a
+slide, not live.
 
 ## 7. Dry run
 

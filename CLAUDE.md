@@ -7,11 +7,12 @@ synthetic.
 
 | Alias | What | Who deploys |
 |---|---|---|
-| `fde-prod` | Developer Edition org, production. Also the Dev Hub (`fde-devhub`) | CI only, on merge to `main` |
-| `fde-test` | Developer Edition org, test / UAT | CI only, on merge to `test` |
-| `scratch-gh<n>` | one scratch org per issue | the agent |
+| `fde-prod` | Developer Edition org, production | CI only, on merge to `main` |
+| `fde-test` | Developer Edition org, dev and test. Instance URL: `<fill in after setup>` | the agent while building; CI on merge to `test` |
 
-The agent deploys to scratch orgs only. A hook enforces it; do not look for a way around it.
+The agent deploys to `fde-test` only, never to `fde-prod`. A hook enforces it; do not look for a way
+around it. In a real project the agent's org is a scratch org or a dev sandbox per developer; this
+demo shares one org to keep setup small.
 
 ## Branches
 
@@ -30,8 +31,8 @@ The agent deploys to scratch orgs only. A hook enforces it; do not look for a wa
 ## Verify
 
 ```bash
-sf project deploy start --target-org scratch-gh<n> --source-dir force-app
-sf apex run test --target-org scratch-gh<n> --test-level RunLocalTests --code-coverage --wait 10
+sf project deploy start --target-org fde-test --source-dir force-app
+sf apex run test --target-org fde-test --test-level RunLocalTests --code-coverage --wait 10
 npm run test:unit
 sf code-analyzer run --workspace force-app --severity-threshold 2 --view table
 ```
@@ -42,6 +43,11 @@ sf code-analyzer run --workspace force-app --severity-threshold 2 --view table
   uses it cannot reach production until GH-1 does. Run the deploy preflight before a promotion PR.
 - The org's default Business Hours record is 24/7 in a new Developer Edition org. Set it to 09:00–18:00
   Mon–Fri in both orgs, or every business-hours calculation equals wall-clock time.
+
+## Checking in the org
+
+The browser (Playwright MCP) is logged in to `fde-test` before a session starts. Navigate to the
+instance URL above; never generate a login URL.
 
 ## Pipeline artifacts
 
