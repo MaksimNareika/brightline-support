@@ -8,3 +8,6 @@ coverage/
 .env.*
 .claude/settings.local.json
 .DS_Store
+
+# Task worktrees (dev workflow Stage 0)
+.claude/worktrees/

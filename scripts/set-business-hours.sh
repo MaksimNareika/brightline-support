@@ -4,18 +4,19 @@
 #   bash scripts/set-business-hours.sh <org alias> [time zone]
 #
 # A new org's default is 24/7, which makes every business-hours calculation equal clock time.
-# The time zone defaults to that of fde-prod's default Business Hours, so all orgs calculate the
-# same. Used by fde-test-create.sh, and for every so-GH-<n> scratch org right after it is created.
+# The time zone defaults to that of fde-test (the same as fde-prod, which fde-test-create.sh copies),
+# so all orgs calculate the same and an agent creating its org never reads production.
+# Used by fde-test-create.sh (with the time zone passed) and scratch-create.sh.
 set -euo pipefail
 
 ORG="${1:?usage: set-business-hours.sh <org alias> [time zone]}"
 TZ_SID="${2:-}"
 
 if [ -z "$TZ_SID" ]; then
-  TZ_SID=$(sf data query --target-org fde-prod --json \
+  TZ_SID=$(sf data query --target-org fde-test --json \
              --query "SELECT TimeZoneSidKey FROM BusinessHours WHERE IsDefault = true" |
            jq -r '.result.records[0].TimeZoneSidKey')
-  [ -n "$TZ_SID" ] && [ "$TZ_SID" != null ] || { echo "cannot read Business Hours from fde-prod; pass the time zone" >&2; exit 1; }
+  [ -n "$TZ_SID" ] && [ "$TZ_SID" != null ] || { echo "cannot read Business Hours from fde-test; pass the time zone" >&2; exit 1; }
 fi
 
 # Apex cannot update BusinessHours; the REST API can.
