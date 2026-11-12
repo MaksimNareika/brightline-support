@@ -31,7 +31,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm install --global @anthropic-ai/claude-code
+      # Pinned: this job holds the Claude credentials. Bump deliberately, to a release at least
+      # two weeks old.
+      - run: npm install --global @anthropic-ai/claude-code@2.1.312
       - name: Review against REVIEW.md
         env:
           ANTHROPIC_BASE_URL: ${{ secrets.ANTHROPIC_BASE_URL }}

@@ -4,8 +4,8 @@
 #   bash scripts/fde-test-create.sh            # 30 days
 #   bash scripts/fde-test-create.sh 20         # fewer days, e.g. to end soon after the lecture
 #
-# Deploys origin/test, sets the default Business Hours to Mon–Fri 09:00–18:00 in fde-prod's
-# Business Hours time zone, assigns Support_Agent, and prints what the GitHub `test` environment
+# Sets the default Business Hours to Mon–Fri 09:00–18:00 in fde-prod's Business Hours time zone,
+# deploys origin/test, assigns Support_Agent, and prints what the GitHub `test` environment
 # needs. Run by you, off screen — not by the agent and not by CI.
 #
 # A scratch org lives at most 30 days and cannot be extended. It holds one of the Dev Hub's
@@ -36,6 +36,9 @@ sf org create scratch --target-dev-hub "$DEV_HUB" --alias "$ALIAS" \
   --definition-file config/project-scratch-def.json --duration-days "$DAYS" \
   --no-track-source --wait 30 >/dev/null
 
+# Business Hours first: the deploy runs the tests, and business-hours tests must see real hours.
+bash scripts/set-business-hours.sh "$ALIAS" "$tz"
+
 # Deploy exactly what the test branch holds, whatever is checked out here.
 git fetch --quiet origin test
 src=$(mktemp -d)
@@ -44,8 +47,6 @@ git worktree add --quiet --detach "$src" origin/test
 echo "Deploying origin/test ($(git rev-parse --short origin/test))…"
 (cd "$src" && sf project deploy start --source-dir force-app --target-org "$ALIAS" \
   --test-level RunLocalTests --wait 30)
-
-bash scripts/set-business-hours.sh "$ALIAS" "$tz"
 
 sf org assign permset --name Support_Agent --target-org "$ALIAS" >/dev/null
 
