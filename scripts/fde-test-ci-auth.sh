@@ -16,9 +16,15 @@ set -euo pipefail
 ALIAS=fde-test
 cd "$(git rev-parse --show-toplevel)"
 
-info=$(sf org display --target-org "$ALIAS" --verbose --json)
+info=$(sf org display --target-org "$ALIAS" --json)
 [ -n "$(jq -r '.result.expirationDate // empty' <<<"$info")" ] || {
   echo "$ALIAS is not a scratch org; refusing to hand its login to CI" >&2; exit 1; }
 
-jq -j '.result.sfdxAuthUrl' <<<"$info" | gh secret set SF_AUTH_URL --env test
+# `sf org display --verbose` shows only "[REDACTED]"; this command reveals the real URL.
+url=$(sf org auth show-sfdx-auth-url --target-org "$ALIAS" --json | jq -j '.result.sfdxAuthUrl // empty')
+case "$url" in
+  force://*) ;;
+  *) echo "no usable auth URL for $ALIAS (it must be logged in with a web flow, not JWT)" >&2; exit 1 ;;
+esac
+printf '%s' "$url" | gh secret set SF_AUTH_URL --env test
 echo "SF_AUTH_URL set in the GitHub test environment for $(jq -r '.result.username' <<<"$info")."
