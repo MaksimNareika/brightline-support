@@ -107,8 +107,10 @@ openssl req -x509 -sha256 -nodes -days 365 -newkey rsa:2048 \
   -keyout server.key -out server.crt -subj "/CN=fde-ci"
 ```
 
-In `fde-prod` (you) — one app serves both orgs, because scratch orgs created from a Dev Hub accept
-its app for the JWT flow: Setup → External Client App Manager → New:
+In `fde-prod` (you): Setup → External Client App Manager → New. The app serves `fde-prod` only: an
+External Client App exists only in the org it was created in, so a scratch org refuses it
+("External client app is not installed in this org"). CI reaches `fde-test` with an auth URL
+instead (step 8).
 
 - OAuth enabled; callback `http://localhost:1717/OAuthRedirect`
 - Scopes: `api`, `refresh_token, offline_access`, `web`
@@ -117,7 +119,7 @@ its app for the JWT flow: Setup → External Client App Manager → New:
   Administrator profile (or a permission set assigned to `CI Integration`)
 - Copy the **Consumer Key**
 
-**Check** for `fde-prod` now (the same check for `fde-test` is part of step 8):
+**Check:**
 
 ```bash
 sf org login jwt --client-id <consumer key> --username <ci integration username> \
@@ -138,7 +140,7 @@ In `brightline-support` → Settings:
 | Where | What |
 |---|---|
 | Environments → `prod` | vars `SF_CLIENT_ID` (the consumer key), `SF_USERNAME` (`CI Integration`), `SF_INSTANCE_URL` (`https://login.salesforce.com`); secret `SF_JWT_KEY` (contents of `server.key`); **Required reviewers: you** — the last human gate before production |
-| Environments → `test` | the same `SF_CLIENT_ID` and `SF_JWT_KEY`; `SF_USERNAME` and `SF_INSTANCE_URL` (`https://test.salesforce.com`) are printed by `fde-test-create.sh` in step 8, and change each time `fde-test` is recreated |
+| Environments → `test` | nothing yet: in step 8, `fde-test-create.sh` sets the secret `SF_AUTH_URL` (`fde-test`'s auth URL) itself. No JWT key here — the key that can log in to production stays in `prod` |
 | Secrets → Actions | the Claude credential for the AI jobs, the same variables as the local shell: with a gateway `ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN` and, if used, `ANTHROPIC_CUSTOM_HEADERS` — all **secrets**, so the host never appears in YAML or logs; without one `ANTHROPIC_API_KEY` or `CLAUDE_CODE_OAUTH_TOKEN` |
 | Actions → General | Actions enabled; `anthropics/claude-code-action` allowed if the org restricts third-party actions |
 | Branches → `test`, `main` | require a PR; require status checks `static`, `org-drift` [§8] and `validate`; require branches to be up to date; no direct pushes, no force-push. The checks appear in the list only after the first PR has run them |
@@ -153,26 +155,24 @@ git switch main && sf project deploy start --source-dir force-app --target-org f
 bash scripts/fde-test-create.sh        # scratch org from fde-prod, deploys origin/test, sets Business Hours
 ```
 
-Run the two `gh variable set` lines the script prints, then check that CI can log in to `fde-test`:
+The script ends by running `scripts/fde-test-ci-auth.sh`, which stores `fde-test`'s auth URL as the
+secret `SF_AUTH_URL` in the GitHub `test` environment, straight from the CLI, never printed. CI's
+login step uses it when it is set and JWT otherwise. The auth URL is a refresh token for
+`fde-test`'s admin: it works only for that scratch org and dies with it. JWT cannot be used here:
+the External Client App exists only in `fde-prod` (step 6).
 
-```bash
-sf org login jwt --client-id <consumer key> --username <fde-test username> \
-  --jwt-key-file ~/fde-ci/server.key --instance-url https://test.salesforce.com --alias ci-check
-sf org logout --target-org ci-check --no-prompt
-```
-
-If this login is refused while the `fde-prod` one works, the scratch org does not accept the
-External Client App. Create a classic Connected App in `fde-prod` with the same settings (Setup →
-External Client App Settings → allow creation of connected apps), use its consumer key for both
-environments and rerun both checks.
+Do **not** test this with `sf org login jwt --username <fde-test user>`: the login fails, and a
+failed JWT login removes the CLI's saved login for that username, so `fde-test` disappears from
+`sf org list`. The check is the first CI run against `fde-test`: rerun `validate` on an open PR to
+`test`, or merge one.
 
 Create issue GH-1 ("Business hours helper", closed) so the number in `CLAUDE.md` is real.
 These deploys are done by you, by hand, once. From here on only CI deploys to `fde-test` and
 `fde-prod`.
 
-**Check:** both commands succeed, the script shows Monday 09:00–18:00 and Saturday empty, the JWT
-login to `fde-test` succeeds, and `sf apex run test --target-org fde-test --test-level RunLocalTests --wait 10`
-passes. `main` (and `fde-prod`) does not have GH-1 yet; it reaches production with the first release.
+**Check:** both commands succeed, the script shows Monday 09:00–18:00 and Saturday empty and ends
+with `SF_AUTH_URL set`, a CI run against `fde-test` logs in, and
+`sf apex run test --target-org fde-test --test-level RunLocalTests --wait 10` passes. `main` (and `fde-prod`) does not have GH-1 yet; it reaches production with the first release.
 Write `fde-test`'s expiry date into the prep file.
 
 ### Recreating `fde-test`
@@ -186,7 +186,9 @@ sf org delete scratch --target-org fde-test --no-prompt     # you; skip if it ha
 bash scripts/fde-test-create.sh                             # or: … 20, for fewer days
 ```
 
-Then the two `gh variable set` lines, and the JWT check above. The new org holds exactly what
+The script refreshes `SF_AUTH_URL` itself. If `fde-test` vanished from `sf org list` while it
+still exists in the Dev Hub (Setup → Active Scratch Orgs), delete it there instead of with the
+command above. The new org holds exactly what
 `test` holds, with no drift. Validations CI ran against the old org are void; the next merge falls
 back to a full deploy by itself.
 
