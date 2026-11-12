@@ -18,7 +18,7 @@ Notes by Priya, unedited.
 - Agents want to see the countdown on the case page, red when overdue. Something simple.
 - Cases from the integration user (bulk imports from the old system) should NOT get an SLA — they're
   historical. ~5k at a time.
-- Priya mentioned there's already a business hours helper someone built in test last sprint (GH-1),
+- Priya mentioned there's already a business hours helper someone built in test last sprint (#3),
   maybe reuse.
 - Dana wants it before the quarterly review. Lee: keep it small, we can add stuff later.
 

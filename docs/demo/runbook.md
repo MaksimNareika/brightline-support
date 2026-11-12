@@ -10,6 +10,8 @@ depend on changes that are planned but not built yet.
   under 30 minutes). It is called **GH-3** below; the real issue number is whatever GitHub hands out,
   because issues and PRs share one counter and a number is never reused. Write the real numbers in
   the prep file after each phase.
+- **GH-2 and GH-3 are names, not issue numbers.** The business hours helper is the real issue
+  **#3**; it has nothing to do with the name GH-3.
 
 `fde-test` is a scratch org that lives at most 30 days. Before phase A, check its expiry in
 `sf org list`: if it is before the lecture day, recreate it (setup §8, *Recreating `fde-test`*)
@@ -43,7 +45,7 @@ Answer the gates the same way every run, so the spec, the test plan and the fall
 | "Replied" | Status moves off `New`. Email-based → Out of scope |
 | Late | owner → `Escalations` queue, breach flag set; not if the status is no longer `New` |
 | Integration user | anyone with a custom permission (e.g. `SLA_Bypass`), assigned by permission set — config, not usernames in code |
-| GH-1 helper | reuse `BusinessHoursCalculator` |
+| Helper (#3) | reuse `BusinessHoursCalculator` |
 | Badge | countdown on the case page, red when overdue |
 | Dashboard | Out of scope |
 
@@ -122,15 +124,15 @@ Then run test plan §3 in `so-GH-3`, merge the PR to `test` (you), and run the �
 
 This is the "whole pipeline" of the practice exercise. Record it end to end; cut the waiting.
 
-1. **You**: `gh pr create --base main --head test --title "Release 1: GH-1, GH-2, GH-3"`. A release
-   promotes everything in `test` together, so a helper class (GH-1) always travels with the change
+1. **You**: `gh pr create --base main --head test --title "Release 1: #3, GH-2, GH-3"`. A release
+   promotes everything in `test` together, so a helper class (#3) always travels with the change
    that uses it.
 2. `static`, `org-drift`, `validate` against `fde-prod` green; AI review comment.
 3. Merge. The `Deploy` job waits on the `prod` environment → approve it as required reviewer.
 4. Quick deploy to `fde-prod` succeeds; release notes appear **[§8]**.
 5. In `fde-prod`: create a Gold, Medium case → respond-by is 6 business hours (test plan T3-02).
 
-**Check:** the recording shows each of steps 1–5. From now on `fde-prod` holds GH-1–GH-3.
+**Check:** the recording shows each of steps 1–5. From now on `fde-prod` holds the helper (#3), GH-2 and GH-3.
 
 ## Phase F — reset for the live run
 

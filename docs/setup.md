@@ -166,13 +166,14 @@ failed JWT login removes the CLI's saved login for that username, so `fde-test` 
 `sf org list`. The check is the first CI run against `fde-test`: rerun `validate` on an open PR to
 `test`, or merge one.
 
-Create issue GH-1 ("Business hours helper", closed) so the number in `CLAUDE.md` is real.
+Issue #3 *Business hours helper* (closed) is the ticket `CLAUDE.md` names as the owner of
+`BusinessHoursCalculator`. On a fresh repo, create such an issue and put its number in `CLAUDE.md`.
 These deploys are done by you, by hand, once. From here on only CI deploys to `fde-test` and
 `fde-prod`.
 
 **Check:** both commands succeed, the script shows Monday 09:00–18:00 and Saturday empty and ends
 with `SF_AUTH_URL set`, a CI run against `fde-test` logs in, and
-`sf apex run test --target-org fde-test --test-level RunLocalTests --wait 10` passes. `main` (and `fde-prod`) does not have GH-1 yet; it reaches production with the first release.
+`sf apex run test --target-org fde-test --test-level RunLocalTests --wait 10` passes. `main` (and `fde-prod`) does not have the helper (#3) yet; it reaches production with the first release.
 Write `fde-test`'s expiry date into the prep file.
 
 ### Recreating `fde-test`
@@ -224,7 +225,7 @@ times; S3 decides whether the scratch org can be created live.
 | S7 | CI, PR to `test` | branch from `test`, change one line in `README.md`, open a PR to `test` | `static`, `org-drift`, `validate` green; one AI review comment within ~5 minutes |
 | S8 | CI, merge to `test` | merge S7 | the `Deploy` job ran **Quick deploy the validated job** and skipped the full deploy |
 | S9 | Deploy-failure triage **[§8]** | branch from `test`, add a class that calls `NoSuchClass.run()`, open a PR | `validate` fails; a triage comment names `NoSuchClass` and the file. Close the PR without merging |
-| S10 | CI to prod + release notes **[§8]** | branch from **`main`** (not `test` — that would ship GH-1), change `README.md`, PR to `main`, merge | `validate` against `fde-prod` green; the `Deploy` job waits for your approval; after approval it quick-deploys; release notes are produced |
+| S10 | CI to prod + release notes **[§8]** | branch from **`main`** (not `test` — that would ship the helper, #3), change `README.md`, PR to `main`, merge | `validate` against `fde-prod` green; the `Deploy` job waits for your approval; after approval it quick-deploys; release notes are produced |
 | S11 | Clean up | **you**: `sf org delete scratch --target-org so-smoke --no-prompt`; `git worktree prune` | S2's active count is back to where it started |
 
 If S7's AI comment never appears, check the job log for a connection error: GitHub-hosted runners
