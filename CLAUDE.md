@@ -7,12 +7,13 @@ synthetic.
 
 | Alias | What | Who deploys |
 |---|---|---|
-| `fde-prod` | Developer Edition org, production | CI only, on merge to `main` |
-| `fde-test` | Developer Edition org, dev and test. Instance URL: `<fill in after setup>` | the agent while building; CI on merge to `test` |
+| `so-GH-<n>` | Scratch org, one per task, created at Stage 0 of the dev workflow | the agent, while building that task |
+| `fde-test` | Scratch org, QA, long-lived (recreated every ≤ 30 days) | CI only, on merge to `test` |
+| `fde-prod` | Developer Edition org, production **and Dev Hub** | CI only, on merge to `main` |
 
-The agent deploys to `fde-test` only, never to `fde-prod`. A hook enforces it; do not look for a way
-around it. In a real project the agent's org is a scratch org or a dev sandbox per developer; this
-demo shares one org to keep setup small.
+The agent deploys to its task's `so-GH-<n>` only, never to `fde-test` or `fde-prod`. A hook enforces
+it; do not look for a way around it. The Dev Hub allows few active scratch orgs and `fde-test` holds
+one of them: create no scratch org other than the task's own.
 
 ## Branches
 
@@ -31,23 +32,26 @@ demo shares one org to keep setup small.
 ## Verify
 
 ```bash
-sf project deploy start --target-org fde-test --source-dir force-app
-sf apex run test --target-org fde-test --test-level RunLocalTests --code-coverage --wait 10
+sf project deploy start --target-org so-GH-<n> --source-dir force-app
+sf apex run test --target-org so-GH-<n> --test-level RunLocalTests --code-coverage --wait 10
 npm run test:unit
 sf code-analyzer run --workspace force-app --severity-threshold 2 --view table
 ```
 
 ## Landmines
 
-- `BusinessHoursCalculator` exists in `test` but has not been promoted to `main` yet (GH-1). Code that
-  uses it cannot reach production until GH-1 does. Run the deploy preflight before a promotion PR.
-- The org's default Business Hours record is 24/7 in a new Developer Edition org. Set it to 09:00–18:00
-  Mon–Fri in both orgs, or every business-hours calculation equals wall-clock time.
+- `BusinessHoursCalculator` (GH-1) is in `test` but not in `main` yet. Promotion to `main` is a release
+  PR from `test`, so everything in `test` ships together. Never cherry-pick single tickets to `main`:
+  a ticket that uses another ticket's class would fail production validation with "Invalid type".
+- A new org's default Business Hours record is 24/7, which makes every business-hours calculation
+  equal wall-clock time. `fde-prod` is set to 09:00–18:00 Mon–Fri by hand; every scratch org gets it
+  from its creation script. If a business-hours result equals clock time, check the org's default
+  Business Hours before the code.
 
 ## Checking in the org
 
-The browser (Playwright MCP) is logged in to `fde-test` before a session starts. Navigate to the
-instance URL above; never generate a login URL.
+A human logs the browser (Playwright MCP) in to the task's scratch org after Stage 0. Use the open
+session; never generate a login URL.
 
 ## Pipeline artifacts
 
