@@ -82,7 +82,7 @@ The browser profile persists between sessions. Each new scratch org needs one hu
 of `dev-workflow` creates the org, then **you** run
 
 ```bash
-bash scripts/scratch-login.sh so-GH-<n>      # copies a one-time login URL to the clipboard
+bash scripts/scratch-login.sh so-GH-<n>      # copies a one-time login URL to the clipboard (macOS: pbcopy)
 ```
 
 in a terminal that is **not** shared, and paste the URL into the Playwright window's address bar.

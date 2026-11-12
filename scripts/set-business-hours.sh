@@ -5,8 +5,8 @@
 #
 # A new org's default is 24/7, which makes every business-hours calculation equal clock time.
 # The time zone defaults to that of fde-test (the same as fde-prod, which fde-test-create.sh copies),
-# so all orgs calculate the same and an agent creating its org never reads production.
-# Used by fde-test-create.sh (with the time zone passed) and scratch-create.sh.
+# so all orgs calculate the same. Callers pass it: fde-test-create.sh reads fde-prod;
+# scratch-create.sh reads fde-test, and fde-prod only when fde-test has expired (read-only).
 set -euo pipefail
 
 ORG="${1:?usage: set-business-hours.sh <org alias> [time zone]}"
