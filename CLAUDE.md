@@ -40,7 +40,7 @@ sf code-analyzer run --workspace force-app --severity-threshold 2 --view table
 
 ## Landmines
 
-- `BusinessHoursCalculator` (GH-1) is in `test` but not in `main` yet. Promotion to `main` is a release
+- `BusinessHoursCalculator` (issue #3) is in `test` but not in `main` yet. Promotion to `main` is a release
   PR from `test`, so everything in `test` ships together. Never cherry-pick single tickets to `main`:
   a ticket that uses another ticket's class would fail production validation with "Invalid type".
 - A new org's default Business Hours record is 24/7, which makes every business-hours calculation

@@ -1,5 +1,5 @@
 /**
- * GH-1. Adds working time to a start time using the org's default Business Hours. Merged into
+ * Issue #3. Adds working time to a start time using the org's default Business Hours. Merged into
  * test; not promoted to main yet.
  */
 public inherited sharing class BusinessHoursCalculator {
