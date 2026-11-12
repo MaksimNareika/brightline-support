@@ -24,7 +24,8 @@ if sf org display --target-org "$ALIAS" >/dev/null 2>&1; then
   exit 1
 fi
 
-# The Business Hours time zone comes from fde-prod, so both orgs calculate the same.
+# The Business Hours time zone comes from fde-prod, so both orgs calculate the same. Read it
+# before creating the org, so a missing setup step fails without spending a scratch-org slot.
 tz=$(sf data query --target-org "$DEV_HUB" --json \
        --query "SELECT TimeZoneSidKey FROM BusinessHours WHERE IsDefault = true" |
      jq -r '.result.records[0].TimeZoneSidKey')
@@ -44,20 +45,7 @@ echo "Deploying origin/test ($(git rev-parse --short origin/test))…"
 (cd "$src" && sf project deploy start --source-dir force-app --target-org "$ALIAS" \
   --test-level RunLocalTests --wait 30)
 
-# Apex cannot update BusinessHours; the REST API can. Saturday and Sunday: no hours.
-api=$(sf org display --target-org "$ALIAS" --json | jq -r '.result.apiVersion')
-bh=$(sf data query --target-org "$ALIAS" --json \
-       --query "SELECT Id FROM BusinessHours WHERE IsDefault = true" | jq -r '.result.records[0].Id')
-body=$(jq -n --arg tz "$tz" '
-  {TimeZoneSidKey: $tz}
-  + ([ "Monday","Tuesday","Wednesday","Thursday","Friday" ]
-     | map({(.+"StartTime"): "09:00:00.000Z", (.+"EndTime"): "18:00:00.000Z"}) | add)
-  + ([ "Saturday","Sunday" ]
-     | map({(.+"StartTime"): null, (.+"EndTime"): null}) | add)')
-sf api request rest "/services/data/v$api/sobjects/BusinessHours/$bh" --method PATCH \
-  --body "$body" --target-org "$ALIAS" >/dev/null
-sf data query --target-org "$ALIAS" \
-  --query "SELECT TimeZoneSidKey, MondayStartTime, MondayEndTime, SaturdayStartTime FROM BusinessHours WHERE IsDefault = true"
+bash scripts/set-business-hours.sh "$ALIAS" "$tz"
 
 sf org assign permset --name Support_Agent --target-org "$ALIAS" >/dev/null
 

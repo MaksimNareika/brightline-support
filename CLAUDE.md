@@ -44,9 +44,10 @@ sf code-analyzer run --workspace force-app --severity-threshold 2 --view table
   PR from `test`, so everything in `test` ships together. Never cherry-pick single tickets to `main`:
   a ticket that uses another ticket's class would fail production validation with "Invalid type".
 - A new org's default Business Hours record is 24/7, which makes every business-hours calculation
-  equal wall-clock time. `fde-prod` is set to 09:00–18:00 Mon–Fri by hand; every scratch org gets it
-  from its creation script. If a business-hours result equals clock time, check the org's default
-  Business Hours before the code.
+  equal wall-clock time. `fde-prod` is set to 09:00–18:00 Mon–Fri by hand. Every scratch org needs
+  `bash scripts/set-business-hours.sh <alias>` right after it is created (`fde-test-create.sh` does it
+  for `fde-test`). If a business-hours result equals clock time, check the org's default Business
+  Hours before the code.
 
 ## Checking in the org
 
