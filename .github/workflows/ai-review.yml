@@ -1,6 +1,12 @@
 # AI review inside the pipeline. It reads and comments; it cannot deploy.
 # No Salesforce secrets in this job: PR text, comments and code are untrusted input, and a prompt
 # injection in them must find nothing worth stealing and nothing it can run against an org.
+#
+# Runs the Claude Code CLI directly, so it works with an AI gateway (base URL + bearer token +
+# custom headers) as well as with a plain API key. Set as repository secrets either
+#   ANTHROPIC_BASE_URL, ANTHROPIC_AUTH_TOKEN and, if the gateway needs it, ANTHROPIC_CUSTOM_HEADERS
+# or ANTHROPIC_API_KEY / CLAUDE_CODE_OAUTH_TOKEN. Secrets are masked in logs: the gateway host
+# never appears in this file or in a job log.
 name: AI review
 
 on:
@@ -22,20 +28,32 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: anthropics/claude-code-action@v1
+      - uses: actions/setup-node@v4
         with:
-          # One of the two is set as a repository secret; the other stays empty.
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          # The workflow's own token: no GitHub App install needed, and it can only do what
-          # `permissions:` above grants — read code, comment on the PR.
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          prompt: |
-            Review pull request #${{ github.event.pull_request.number }} in ${{ github.repository }}
-            against REVIEW.md. Read CLAUDE.md for conventions. If the PR adds sdlc/GH-<n>/, read
-            00-context.md and 10-plan.md there and judge the diff against them.
-            Post exactly one comment with gh pr comment, in the format REVIEW.md gives.
-          claude_args: >-
-            --model claude-sonnet-5-5
-            --max-turns 25
+          node-version: 22
+      # Pinned: this job holds the Claude credentials. Bump deliberately, to a release at least
+      # two weeks old.
+      - run: npm install --global @anthropic-ai/claude-code@2.1.312
+      - name: Review against REVIEW.md
+        env:
+          ANTHROPIC_BASE_URL: ${{ secrets.ANTHROPIC_BASE_URL }}
+          ANTHROPIC_AUTH_TOKEN: ${{ secrets.ANTHROPIC_AUTH_TOKEN }}
+          ANTHROPIC_CUSTOM_HEADERS: ${{ secrets.ANTHROPIC_CUSTOM_HEADERS }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # The workflow's own token: it can only do what `permissions:` above grants —
+          # read code, comment on the PR.
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          # An unset secret arrives as an empty string; Claude Code must see it as absent.
+          for v in ANTHROPIC_BASE_URL ANTHROPIC_AUTH_TOKEN ANTHROPIC_CUSTOM_HEADERS ANTHROPIC_API_KEY CLAUDE_CODE_OAUTH_TOKEN; do
+            [ -n "${!v}" ] || unset "$v"
+          done
+          claude -p "Review pull request #$PR in $REPO against REVIEW.md. Read CLAUDE.md for conventions.
+          If the PR adds sdlc/GH-<n>/, read 00-context.md and 10-plan.md there and judge the diff against them.
+          Post exactly one comment with gh pr comment, in the format REVIEW.md gives." \
+            --model claude-sonnet-5-5 \
+            --max-turns 25 \
             --allowedTools "Read,Grep,Glob,Bash(git diff:*),Bash(git log:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr comment:*)"
