@@ -82,11 +82,13 @@ The browser profile persists between sessions. Each new scratch org needs one hu
 of `dev-workflow` creates the org, then **you** run
 
 ```bash
-bash scripts/scratch-login.sh so-GH-<n>      # [§8] prints username + login URL, password to the clipboard
+bash scripts/scratch-login.sh so-GH-<n>      # copies a one-time login URL to the clipboard (macOS: pbcopy)
 ```
 
-in a terminal that is **not** shared, and log in once in the Playwright window. The agent never
-sees the password or a session URL; the guard hook blocks `sf org open`.
+in a terminal that is **not** shared, and paste the URL into the Playwright window's address bar.
+The URL carries a live session, so it goes to the clipboard, never to the screen. The agent never
+sees it: the guard hook blocks `sf org open` and `scratch-login.sh`. The agent finds the org's
+address with `scripts/org-url.sh`, which prints the instance URL only.
 
 **Check:** done in the smoke test (step 10, S4).
 
@@ -218,10 +220,10 @@ times; S3 decides whether the scratch org can be created live.
 |---|---|---|---|
 | S1 | Orgs | `sf org list` | only `fde-prod` (Dev Hub) and `fde-test` (scratch, expiry after the lecture day), both `Connected` |
 | S2 | Scratch quota | `sf org list limits --target-org fde-prod \| grep -i scratch` | at least 2 active and 2 daily remaining, with `fde-test` already counted |
-| S3 | Scratch org end to end | `time bash scripts/scratch-create.sh smoke` **[§8]** (creates `so-smoke` from `origin/test`: push, Business Hours, permission set, seed cases) | finishes; note the minutes. Then `sf data query --target-org so-smoke -q "SELECT MondayStartTime, MondayEndTime FROM BusinessHours WHERE IsDefault = true"` shows 09:00/18:00, and `sf apex run test --target-org so-smoke --test-level RunLocalTests --wait 10` passes |
-| S4 | Browser | `scratch-login.sh so-smoke` off screen, log in; ask Claude: *"open a Gold case in so-smoke and take a screenshot"* | the record page renders in the Playwright window, the screenshot is saved |
+| S3 | Scratch org end to end | on an up-to-date `test` checkout: `time bash scripts/scratch-create.sh smoke 1` (creates `so-smoke` for 1 day: Business Hours, deploy of the checkout, `Support_Agent`) | finishes; note the minutes. Then `sf data query --target-org so-smoke -q "SELECT MondayStartTime, MondayEndTime FROM BusinessHours WHERE IsDefault = true"` shows 09:00/18:00, and `sf apex run test --target-org so-smoke --test-level RunLocalTests --wait 10` passes |
+| S4 | Browser | `bash scripts/scratch-login.sh so-smoke` off screen, paste the URL into the Playwright window; ask Claude: *"open a Gold case in so-smoke and take a screenshot"* | the record page renders in the Playwright window, the screenshot is saved |
 | S5 | Apex LSP **[§8]** | add `Integer x = 'a';` to a class in the worktree; ask Claude *"check this class for compile errors without deploying"*; revert | the error is reported from the language server, with no deploy |
-| S6 | Guard | ask Claude to deploy `force-app` to `fde-prod`, then to `fde-test` **[§8]**, then to `so-smoke` | the first two are blocked by `sf-sdlc guard`, the third runs |
+| S6 | Guard | ask Claude to deploy `force-app` to `fde-prod`, then to `fde-test`, then to `so-smoke` | the first two are blocked by `sf-sdlc guard`, the third runs |
 | S7 | CI, PR to `test` | branch from `test`, change one line in `README.md`, open a PR to `test` | `static`, `org-drift`, `validate` green; one AI review comment within ~5 minutes |
 | S8 | CI, merge to `test` | merge S7 | the `Deploy` job ran **Quick deploy the validated job** and skipped the full deploy |
 | S9 | Deploy-failure triage **[§8]** | branch from `test`, add a class that calls `NoSuchClass.run()`, open a PR | `validate` fails; a triage comment names `NoSuchClass` and the file. Close the PR without merging |
