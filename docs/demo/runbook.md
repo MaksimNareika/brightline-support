@@ -155,7 +155,11 @@ accident.
 
 - [ ] Demo macOS user; notifications off; terminal and editor font 18+
 - [ ] Off screen: `gh auth status` → EPAM account; `claude -p "say ok"` works
-- [ ] `sf org list` → only `fde-prod`, `fde-test` (expiry after today); no `so-*` left over
+- [ ] `sf org list` → only `fde-prod` and `fde-test`; no `so-*` left over
+- [ ] `fde-test` lives past the lecture: `sf org display --target-org fde-test --json | jq -r .result.expirationDate`
+      prints a date **after** the lecture day (the current org: 2026-12-12). If not, recreate it
+      (setup §8, *Recreating `fde-test`*): it rebuilds from `test`, which holds GH-2 after phase F.
+      About 10 minutes and one daily scratch-org slot, so check the quota (F6) again afterwards
 - [ ] Scratch quota checked today (F6)
 - [ ] Plugin **not** installed
 - [ ] `fde-test` holds GH-2, not GH-3: a Gold Medium case gets 8 h
