@@ -17,6 +17,7 @@ one of them: create no scratch org other than the task's own.
 
 ## Branches
 
+Each task works in its own git worktree, `.claude/worktrees/GH-<n>`, created at Stage 0.
 `feature/GH-<n>-<slug>` from `test` → PR to `test` → promotion PR to `main`. Never commit to `test` or
 `main` directly.
 
@@ -44,15 +45,17 @@ sf code-analyzer run --workspace force-app --severity-threshold 2 --view table
   PR from `test`, so everything in `test` ships together. Never cherry-pick single tickets to `main`:
   a ticket that uses another ticket's class would fail production validation with "Invalid type".
 - A new org's default Business Hours record is 24/7, which makes every business-hours calculation
-  equal wall-clock time. `fde-prod` is set to 09:00–18:00 Mon–Fri by hand. Every scratch org needs
-  `bash scripts/set-business-hours.sh <alias>` right after it is created (`fde-test-create.sh` does it
-  for `fde-test`). If a business-hours result equals clock time, check the org's default Business
-  Hours before the code.
+  equal wall-clock time. `fde-prod` is set to 09:00–18:00 Mon–Fri by hand; `scripts/scratch-create.sh`
+  and `fde-test-create.sh` set it in every scratch org. Create a task org only with
+  `scratch-create.sh`. If a business-hours result equals clock time, check the org's default
+  Business Hours before the code.
 
 ## Checking in the org
 
-A human logs the browser (Playwright MCP) in to the task's scratch org after Stage 0. Use the open
-session; never generate a login URL.
+A human logs the browser (Playwright MCP) in to the task's scratch org after Stage 0, with
+`scripts/scratch-login.sh`. Use the open session; the org's address is
+`bash scripts/org-url.sh so-GH-<n>` (instance URL only). Never generate a login URL, and never run
+`sf org display` or `sf org list --json`: they print access tokens.
 
 ## Pipeline artifacts
 
