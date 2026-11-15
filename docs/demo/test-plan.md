@@ -106,10 +106,8 @@ Run after the build in `so-GH-3`, before Gate 3, then the smoke subset in `fde-t
 | Id | Where | Expected |
 |---|---|---|
 | P1 | PR to `test` → `static` | Jest, Code Analyzer, risk scan green |
-| P2 | `org-drift` **[§8]** | green; it fails if `fde-test` holds a version of a changed component that `test` does not |
-| P3 | `validate` | deploy validation with `RunLocalTests` green against `fde-test`; artifact `validated-job-id` uploaded |
-| P4 | AI review | exactly one comment in the `REVIEW.md` format; the job had no Salesforce secrets |
-| P5 | merge → `Deploy` | step **Quick deploy the validated job** succeeded; the full deploy step was skipped |
-| P6 | PR to `main` → merge | `Deploy` waits for the `prod` reviewer; nothing deploys before approval |
-| P7 | failed `validate` **[§8]** | a triage comment names the cause, the file and the line (runbook phase C: the invented field `Respond_Deadline__c`) |
-| P8 | merge to `main` **[§8]** | release notes list the promoted issues, written from `sdlc/GH-<n>/` |
+| P2 | `validate` | deploy validation with `RunLocalTests` green against `fde-test`; artifact `validated-job-id` uploaded |
+| P3 | AI review | exactly one comment in the `REVIEW.md` format; the job had no Salesforce secrets |
+| P4 | merge → `Deploy` | step **Quick deploy the validated job** succeeded; the full deploy step was skipped |
+| P5 | PR to `main` → merge | `validate` and `Deploy` both wait for the `prod` reviewer; nothing reaches `fde-prod` before approval |
+| P6 | failed `validate` | the merge is blocked; the job log names the component, the line and the cause (setup smoke test S9) |

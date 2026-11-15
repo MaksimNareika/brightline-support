@@ -2,7 +2,7 @@
 
 One-time setup, about three hours including the smoke test. Steps marked **(you)** need a browser
 or an account decision; the rest are commands. Each step ends with a **Check**: do not move on
-until it passes. Items marked **[§8]** depend on changes that are planned but not built yet.
+until it passes.
 
 The environment:
 
@@ -24,10 +24,10 @@ of the Dev Hub's few active scratch-org slots (Developer Edition: 3 active, 6 pe
 Record and present from a separate macOS user (System Settings → Users & Groups → Add User,
 e.g. `fde-demo`). Your daily profile has client orgs in `sf org list`, client plugins in Claude
 Code, another GitHub account in `gh` and notifications — any of which can appear in a recording.
-In the new profile install: Salesforce CLI, Node 22 LTS, Python 3, Git, GitHub CLI, `jq`, Java 17+
-(for the Apex language server), Claude Code, VS Code.
+In the new profile install: Salesforce CLI, Node 22 LTS, Python 3, Git, GitHub CLI, `jq`, Claude Code,
+VS Code.
 
-**Check:** `sf --version && node -v && java -version && gh --version && jq --version && claude --version`
+**Check:** `sf --version && node -v && gh --version && jq --version && claude --version`
 prints a version for each.
 
 ## 1. One Developer Edition org — production and Dev Hub (you)
@@ -60,7 +60,7 @@ Do **not** set `fde-prod` as the default `target-org`. `fde-test` is created in 
 `test` exist.
 
 **Check:** `sf org list` shows `fde-prod` `Connected`, marked as the Dev Hub, and nothing else. Write
-the `ActiveScratchOrgs` and `DailyScratchOrgs` maximums from the last command into the prep file —
+the `ActiveScratchOrgs` and `DailyScratchOrgs` maximums from the last command into your prep notes —
 every dry run, rehearsal and live run uses them. `fde-test` holds one active slot permanently.
 
 ## 3. Claude access
@@ -92,12 +92,11 @@ address with `scripts/org-url.sh`, which prints the instance URL only.
 
 **Check:** done in the smoke test (step 10, S4).
 
-## 5. Apex language server [§8]
+## 5. (No step)
 
-The `sf-sdlc` plugin ships an LSP configuration for Salesforce's Apex language server (needs Java
-from step 0). It lets the agent see compile errors before it deploys.
-
-**Check:** smoke test S5.
+An Apex language server was planned here and dropped: it is not part of the demo. Compile errors
+surface on the first deploy to the task's scratch org, which the builders run and fix. The step
+numbers stay, because other documents refer to them.
 
 ## 6. JWT for CI
 
@@ -146,7 +145,7 @@ In `brightline-support` → Settings:
 | Environments → `test` | nothing yet: in step 8, `fde-test-create.sh` sets the secret `SF_AUTH_URL` (`fde-test`'s auth URL) itself. No JWT key here — the key that can log in to production stays in `prod` |
 | Secrets → Actions | the Claude credential for the AI jobs, the same variables as the local shell: with a gateway `ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN` and, if used, `ANTHROPIC_CUSTOM_HEADERS` — all **secrets**, so the host never appears in YAML or logs; without one `ANTHROPIC_API_KEY` or `CLAUDE_CODE_OAUTH_TOKEN` |
 | Actions → General | Actions enabled; `anthropics/claude-code-action` allowed if the org restricts third-party actions |
-| Branches → `test`, `main` | require a PR; require status checks `static`, `org-drift` [§8] and `validate`; require branches to be up to date; no direct pushes, no force-push. The checks appear in the list only after the first PR has run them |
+| Branches → `test`, `main` | require a PR; require status checks `static` and `validate`; require branches to be up to date; no direct pushes, no force-push. The checks appear in the list only after the first PR has run them |
 | Labels | `feature`, `bug`, `permissions-reviewed` |
 
 **Check:** Settings → Environments lists `test` and `prod`; `prod` shows you as required reviewer.
@@ -177,7 +176,7 @@ These deploys are done by you, by hand, once. From here on only CI deploys to `f
 **Check:** both commands succeed, the script shows Monday 09:00–18:00 and Saturday empty and ends
 with `SF_AUTH_URL set`, a CI run against `fde-test` logs in, and
 `sf apex run test --target-org fde-test --test-level RunLocalTests --wait 10` passes. `main` (and `fde-prod`) does not have the helper (#3) yet; it reaches production with the first release.
-Write `fde-test`'s expiry date into the prep file.
+Write `fde-test`'s expiry date into your prep notes.
 
 ### Recreating `fde-test`
 
@@ -238,12 +237,11 @@ times; S3 decides whether the scratch org can be created live.
 | S2 | Scratch quota | `sf org list limits --target-org fde-prod \| grep -i scratch` | at least 2 active and 2 daily remaining, with `fde-test` already counted |
 | S3 | Scratch org end to end | on an up-to-date `test` checkout: `time bash scripts/scratch-create.sh smoke 1` (creates `so-smoke` for 1 day: Business Hours, deploy of the checkout, `Support_Agent`) | finishes; note the minutes. Then `sf data query --target-org so-smoke -q "SELECT MondayStartTime, MondayEndTime FROM BusinessHours WHERE IsDefault = true"` shows 09:00/18:00, and `sf apex run test --target-org so-smoke --test-level RunLocalTests --wait 10` passes |
 | S4 | Browser | `bash scripts/scratch-login.sh so-smoke` off screen, paste the URL into the Playwright window; ask Claude: *"open a Gold case in so-smoke and take a screenshot"* | the record page renders in the Playwright window, the screenshot is saved |
-| S5 | Apex LSP **[§8]** | add `Integer x = 'a';` to a class in the worktree; ask Claude *"check this class for compile errors without deploying"*; revert | the error is reported from the language server, with no deploy |
 | S6 | Guard | ask Claude to deploy `force-app` to `fde-prod`, then to `fde-test`, then to `so-smoke` | the first two are blocked by `sf-sdlc guard`, the third runs |
-| S7 | CI, PR to `test` | branch from `test`, change one line in `README.md`, open a PR to `test` | `static`, `org-drift`, `validate` green; one AI review comment within ~5 minutes |
+| S7 | CI, PR to `test` | branch from `test`, change one line in `README.md`, open a PR to `test` | `static`, `validate` and `review` green; one AI review comment within ~5 minutes. Then add `static` and `validate` as required checks (step 7) |
 | S8 | CI, merge to `test` | merge S7 | the `Deploy` job ran **Quick deploy the validated job** and skipped the full deploy |
-| S9 | Deploy-failure triage **[§8]** | branch from `test`, add a class that calls `NoSuchClass.run()`, open a PR | `validate` fails; a triage comment names `NoSuchClass` and the file. Close the PR without merging |
-| S10 | CI to prod + release notes **[§8]** | branch from **`main`** (not `test` — that would ship the helper, #3), change `README.md`, PR to `main`, merge | `validate` against `fde-prod` green; the `Deploy` job waits for your approval; after approval it quick-deploys; release notes are produced |
+| S9 | Deploy failure blocks the merge | branch from `test`, add a class that calls `NoSuchClass.run()`, open a PR | `validate` fails (`Variable does not exist: NoSuchClass`, file and line in the log); the PR shows the merge as blocked. Close the PR without merging and delete the branch |
+| S10 | CI to production | branch from **`main`** (not `test` — that would ship the helper, #3), change `README.md`, PR to `main`, merge | `validate` against `fde-prod` green; the `Deploy` job waits for your approval; after approval it quick-deploys |
 | S11 | Clean up | **you**: `sf org delete scratch --target-org so-smoke --no-prompt`; `git worktree prune` | S2's active count is back to where it started |
 
 If S7's AI comment never appears, check the job log for a connection error: GitHub-hosted runners
