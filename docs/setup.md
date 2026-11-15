@@ -133,7 +133,8 @@ The login succeeds.
 
 ## 7. GitHub (you)
 
-Repos in the EPAM GitHub org: `brightline-support` (this project) and `sf-sdlc-plugins`.
+Repos: `MaksimNareika/brightline-support` (this project, **public**: branch protection and environment
+reviewers need a public repo on a free plan) and `MaksimNareika/sf-sdlc-plugins` (private).
 If `gh` is logged in to another account: `gh auth login` adds a second one, `gh auth switch` picks
 it. Check `gh auth status` before every push — off screen.
 
@@ -197,16 +198,31 @@ back to a full deploy by itself.
 
 ## 9. Plugin
 
-The project does **not** auto-enable the plugin; installing it is a step in the live demo.
+The project does **not** auto-enable the plugin; installing it is a step in the live demo. The
+plugin repo is private, so git must be able to clone it with your GitHub login: run
+`gh auth setup-git` once.
 
-```text
-/plugin marketplace add <epam-org>/sf-sdlc-plugins
-/plugin install sf-sdlc@fde-sdlc
-/reload-plugins
+`/plugin` exists only in Claude Code in a **terminal** (`claude`), not in the VS Code extension
+("/plugin isn't available in this environment"). Use the terminal for the demo, or the
+`claude plugin` commands, which do the same from any shell:
+
+```bash
+cd brightline-support
+claude plugin marketplace add MaksimNareika/sf-sdlc-plugins
+claude plugin install sf-sdlc@fde-sdlc --scope local      # this project only, nothing committed
 ```
 
-**Check:** `/plugins` lists `sf-sdlc`; `/agents` lists the `sdlc-*` agents. Keep it installed for
-the smoke test and the dry run; uninstall it before the lecture (runbook, phase F).
+In a terminal session the same is `/plugin marketplace add MaksimNareika/sf-sdlc-plugins`, then
+`/plugin install sf-sdlc@fde-sdlc` (scope: local). Then `/reload-plugins` in every open session.
+
+**Check:** `claude plugin list` shows `sf-sdlc@fde-sdlc`, version 0.2.0 or later, enabled; in a
+session, `/agents` lists the eight `sdlc-*` agents and typing `/sf-sdlc:` offers `architect-flow`
+and `dev-workflow`; `bash ../sf-sdlc-plugins/plugins/sf-sdlc/hooks/guard.test.sh` prints
+`0 failed`. Keep it installed for the smoke test and the dry run; remove it before the lecture
+(runbook F5).
+
+When the plugin changes (its version goes up): `claude plugin marketplace update fde-sdlc`, then
+`claude plugin update sf-sdlc@fde-sdlc`, then `/reload-plugins`.
 
 For a team, the same install goes into `.claude/settings.json` as `extraKnownMarketplaces` +
 `enabledPlugins` — show that on a slide, not live.
