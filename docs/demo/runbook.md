@@ -66,7 +66,7 @@ plan finding.
 
 ## Phase A — dry run GH-2
 
-Claude Code in `brightline-support/`, on `test`, plugin installed, `/clear`ed.
+Claude Code in a terminal in `brightline-support/`, on `test`, plugin installed (setup §9), `/clear`ed.
 
 | # | Do | Check |
 |---|---|---|
@@ -144,7 +144,7 @@ The live run needs `test` and `fde-test` back at GH-2, and a free scratch-org sl
 | F2 | revert GH-3 on `test`: branch from `test`, `git revert -m 1 <GH-3 merge commit>`, PR to `test`, merge | CI deploys to `fde-test`; a Gold Medium case there gets 8 h again (test plan T2-05) |
 | F3 | remove the components GH-3 **added** (from `sdlc/GH-3/35-metadata.md`, if any) from `fde-test` with a destructive deploy — or, simpler, recreate `fde-test` from the reverted `test` (setup §8; one daily slot, a new expiry date, update the `test` environment) | the org-drift check, run locally against `fde-test` with base `origin/test`, is clean **[§8]** — otherwise it fails live |
 | F4 | `fde-prod` is **not** reset: it keeps Release 1. The live PR goes to `test` only | — |
-| F5 | uninstall the plugin: `/plugin uninstall sf-sdlc@fde-sdlc` | `/plugins` does not list it |
+| F5 | remove the plugin **and** its marketplace, so L1 installs both live, from a clean state. In a terminal in `brightline-support/`: `claude plugin uninstall sf-sdlc@fde-sdlc --scope local`, then `claude plugin marketplace remove fde-sdlc`. Close every open Claude Code session afterwards | `claude plugin list` shows no `sf-sdlc`; `claude plugin marketplace list` shows no `fde-sdlc`. In a new session, `/agents` lists no `sdlc-*` agent and `/sf-sdlc:` offers nothing |
 | F6 | `sf org list limits --target-org fde-prod \| grep -i scratch` | at least 2 active (with `fde-test` already counted) and 2 daily left for the lecture day (the live org + one spare) |
 
 Without F3, the live PR fails the drift check, because `fde-test` would still hold GH-3's
@@ -161,12 +161,16 @@ accident.
       (setup §8, *Recreating `fde-test`*): it rebuilds from `test`, which holds GH-2 after phase F.
       About 10 minutes and one daily scratch-org slot, so check the quota (F6) again afterwards
 - [ ] Scratch quota checked today (F6)
-- [ ] Plugin **not** installed
+- [ ] Plugin **not** installed: `claude plugin list` shows no `sf-sdlc` and `claude plugin marketplace list`
+      shows no `fde-sdlc` (F5). If either is there, run F5 now — L1 starts from nothing
+- [ ] Off screen: `gh auth setup-git` done, so L1 can clone the private plugin repo; a dry
+      `git ls-remote https://github.com/MaksimNareika/sf-sdlc-plugins.git` prints refs
 - [ ] `fde-test` holds GH-2, not GH-3: a Gold Medium case gets 8 h
 - [ ] Fallback branches pushed; the issue numbers written in the prep file
 - [ ] Recordings on the desktop: T (triage), R1 (release to production)
 - [ ] A second terminal, **not** shared, in `brightline-support/` for `scratch-login.sh`
-- [ ] Claude Code session started in `brightline-support/`, on `test`, `/clear`ed
+- [ ] Claude Code session started **in a terminal** (`claude`; the VS Code extension has no `/plugin`)
+      in `brightline-support/`, on `test`, `/clear`ed
 - [ ] A **second** Claude Code session in `brightline-support/` for L4 (opened after L1, so the plugin is loaded: `/reload-plugins`)
 
 ## Phase H — live segment
@@ -177,7 +181,7 @@ session, L5 end + L6 (Gate 3), L7, T, L8 with R1.
 
 | Step | Do | On screen when it works | ~Time | If it stalls |
 |---|---|---|---|---|
-| L1 Install | `/plugin marketplace add <epam-org>/sf-sdlc-plugins` → `/plugin install sf-sdlc@fde-sdlc` → `/reload-plugins` → `/agents` | the `sdlc-*` agents listed | 2 min | `/plugin marketplace add ../sf-sdlc-plugins` |
+| L1 Install | in the terminal session: `/plugin marketplace add MaksimNareika/sf-sdlc-plugins` → `/plugin install sf-sdlc@fde-sdlc` (scope: local) → `/reload-plugins` → `/agents` | the `sdlc-*` agents listed | 2 min | `/plugin marketplace add ../sf-sdlc-plugins` (the local clone) |
 | L2 Spec | `/sf-sdlc:architect-flow docs/demo/02-change-request.md` → Gate A (key) → issue | the new issue, linked to GH-2; a comment on GH-2 naming the changed AC | 6 min | show the rehearsal's GH-3 issue |
 | L3 Plan | `/sf-sdlc:dev-workflow <n>` → Stage 0 starts the worktree and `so-GH-<n>` in the background → Gate 1 → plan + verify → Gate 2 | Gate 2: custom metadata + LWC tasks, verifier `PASS`. Meanwhile, in the private terminal: `bash scripts/scratch-login.sh so-GH-<n>`, paste the URL into the Playwright window | 6 min | `git switch fallback/GH-3-plan` in the worktree, rerun the workflow: it finds `00` and `10` and resumes |
 | L4 Guard | runs **while L5 builds**, in the **second Claude session**: ask *"deploy force-app to fde-prod"*; then *"have sdlc-reviewer fix the first defect itself"*; then in a terminal `bash ../sf-sdlc-plugins/plugins/sf-sdlc/hooks/guard.test.sh` | `sf-sdlc guard: 'fde-prod' is not an agent org…`; the reviewer has no Edit tool; the test prints exit codes 2/0 | 2 min | always works |
