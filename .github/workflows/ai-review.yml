@@ -2,11 +2,8 @@
 # No Salesforce secrets in this job: PR text, comments and code are untrusted input, and a prompt
 # injection in them must find nothing worth stealing and nothing it can run against an org.
 #
-# Runs the Claude Code CLI directly, so it works with an AI gateway (base URL + bearer token +
-# custom headers) as well as with a plain API key. Set as repository secrets either
-#   ANTHROPIC_BASE_URL, ANTHROPIC_AUTH_TOKEN and, if the gateway needs it, ANTHROPIC_CUSTOM_HEADERS
-# or ANTHROPIC_API_KEY / CLAUDE_CODE_OAUTH_TOKEN. Secrets are masked in logs: the gateway host
-# never appears in this file or in a job log.
+# Claude credentials: one repository secret, CLAUDE_CODE_ENV — a JSON object of the environment
+# variables Claude Code needs (setup step 7). Every value is masked in the log before use.
 name: AI review
 
 on:
@@ -36,21 +33,19 @@ jobs:
       - run: npm install --global @anthropic-ai/claude-code@2.1.312
       - name: Review against REVIEW.md
         env:
-          ANTHROPIC_BASE_URL: ${{ secrets.ANTHROPIC_BASE_URL }}
-          ANTHROPIC_AUTH_TOKEN: ${{ secrets.ANTHROPIC_AUTH_TOKEN }}
-          ANTHROPIC_CUSTOM_HEADERS: ${{ secrets.ANTHROPIC_CUSTOM_HEADERS }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          CLAUDE_CODE_ENV: ${{ secrets.CLAUDE_CODE_ENV }}
           # The workflow's own token: it can only do what `permissions:` above grants —
           # read code, comment on the PR.
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
         run: |
-          # An unset secret arrives as an empty string; Claude Code must see it as absent.
-          for v in ANTHROPIC_BASE_URL ANTHROPIC_AUTH_TOKEN ANTHROPIC_CUSTOM_HEADERS ANTHROPIC_API_KEY CLAUDE_CODE_OAUTH_TOKEN; do
-            [ -n "${!v}" ] || unset "$v"
-          done
+          [ -n "$CLAUDE_CODE_ENV" ] || { echo "secret CLAUDE_CODE_ENV is not set" >&2; exit 1; }
+          # Mask every value (each line of it) before anything can print it, then export.
+          jq -r '.[] | tostring | split("\n")[] | select(length > 0)' <<<"$CLAUDE_CODE_ENV" |
+            while IFS= read -r v; do echo "::add-mask::$v"; done
+          eval "$(jq -r 'to_entries[] | "export \(.key)=\(.value | tostring | @sh)"' <<<"$CLAUDE_CODE_ENV")"
+          unset CLAUDE_CODE_ENV
           claude -p "Review pull request #$PR in $REPO against REVIEW.md. Read CLAUDE.md for conventions.
           If the PR adds sdlc/GH-<n>/, read 00-context.md and 10-plan.md there and judge the diff against them.
           Post exactly one comment with gh pr comment, in the format REVIEW.md gives." \

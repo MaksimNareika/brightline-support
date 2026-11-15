@@ -116,9 +116,9 @@ profile persists between sessions. You log it in to each scratch org once with
 | Environments | Settings → Environments → `prod`: **required reviewer** (you); variables `SF_CLIENT_ID`, `SF_USERNAME`, `SF_INSTANCE_URL`; secret `SF_JWT_KEY` · `test`: secret `SF_AUTH_URL` only |
 | Why two login methods | `pr-validate.yml:51-67`, `deploy.yml:28-44`: if `SF_AUTH_URL` is set (test), log in with the auth URL; otherwise JWT (prod). The External Client App exists only in `fde-prod`, so JWT cannot reach a scratch org |
 | Which environment a job uses | `pr-validate.yml:40` and `deploy.yml:18`: `main` → `prod`, otherwise `test`. That single line decides which org and which secrets |
-| Claude credentials | repository secrets `ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN`, `ANTHROPIC_CUSTOM_HEADERS` (gateway), or `ANTHROPIC_API_KEY` / `CLAUDE_CODE_OAUTH_TOKEN`. Read only in `ai-review.yml:38-43`. Masked in logs |
+| Claude credentials | one repository secret, `CLAUDE_CODE_ENV` (a JSON object of environment variables). Read only by `ai-review.yml`'s review step, which masks every value before exporting it |
 | Required checks | Settings → Branches → rules for `test` and `main`: PR required, `static` and `validate` must pass, branch up to date, no bypass, no force-push |
-| Fork PRs | Settings → Actions → General: approval required for all external contributors. `ai-review.yml:24` also skips forks and drafts |
+| Fork PRs | Settings → Actions → General: approval required for all external contributors. `ai-review.yml:21` also skips forks and drafts |
 | Labels | `permissions-reviewed`, read by the risk scan (below) |
 
 ### Scripts
@@ -445,7 +445,7 @@ script for the agent (`guard.sh:55`), because the URL carries a live session.
 - **Where to show it:**
   - the PR's Checks tab
   - `pr-validate.yml:14-34` and `:36-81`
-  - `ai-review.yml:17-19`, `:54-59`
+  - `ai-review.yml:14-16` (permissions), `:49-54` (prompt and allowed tools)
   - [REVIEW.md](../../REVIEW.md) (what the AI checks, what it leaves alone, the format)
   - `gh run view <id> --log`
 - **Check:** `static` and `validate` green; one AI comment in the REVIEW.md format.

@@ -65,10 +65,8 @@ every dry run, rehearsal and live run uses them. `fde-test` holds one active slo
 
 ## 3. Claude access
 
-Use the Claude access approved for this lecture. If it goes through an AI gateway, the gateway is
-configured by environment variables (`ANTHROPIC_BASE_URL` plus a token variable) in the shell
-profile of the demo user. **Never run `/status`, `env` or `claude auth status` on screen** — they
-show the gateway host.
+Use the Claude access approved for this lecture, configured for the demo user. **Never run
+`/status`, `env` or `claude auth status` on screen**: they print account and configuration details.
 
 **Check (off screen):** `claude -p "say ok"` prints `ok`.
 
@@ -143,7 +141,7 @@ In `brightline-support` → Settings:
 |---|---|
 | Environments → `prod` | vars `SF_CLIENT_ID` (the consumer key), `SF_USERNAME` (`CI Integration`), `SF_INSTANCE_URL` (`https://login.salesforce.com`); secret `SF_JWT_KEY` (contents of `server.key`); **Required reviewers: you** — the last human gate before production |
 | Environments → `test` | nothing yet: in step 8, `fde-test-create.sh` sets the secret `SF_AUTH_URL` (`fde-test`'s auth URL) itself. No JWT key here — the key that can log in to production stays in `prod` |
-| Secrets → Actions | the Claude credential for the AI jobs, the same variables as the local shell: with a gateway `ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN` and, if used, `ANTHROPIC_CUSTOM_HEADERS` — all **secrets**, so the host never appears in YAML or logs; without one `ANTHROPIC_API_KEY` or `CLAUDE_CODE_OAUTH_TOKEN` |
+| Secrets → Actions | `CLAUDE_CODE_ENV`: one secret holding a JSON object of the environment variables Claude Code needs, e.g. `{"ANTHROPIC_API_KEY":"…"}`. The AI review job masks every value and exports them; no variable name or value appears in the YAML or the log |
 | Actions → General | Actions enabled; `anthropics/claude-code-action` allowed if the org restricts third-party actions |
 | Branches → `test`, `main` | require a PR; require status checks `static` and `validate`; require branches to be up to date; no direct pushes, no force-push. The checks appear in the list only after the first PR has run them |
 | Labels | `feature`, `bug`, `permissions-reviewed` |
@@ -244,6 +242,6 @@ times; S3 decides whether the scratch org can be created live.
 | S10 | CI to production | branch from **`main`** (not `test` — that would ship the helper, #3), change `README.md`, PR to `main`, merge | `validate` against `fde-prod` green; the `Deploy` job waits for your approval; after approval it quick-deploys |
 | S11 | Clean up | **you**: `sf org delete scratch --target-org so-smoke --no-prompt`; `git worktree prune` | S2's active count is back to where it started |
 
-If S7's AI comment never appears, check the job log for a connection error: GitHub-hosted runners
-may not reach the gateway. Fallback: run the review headless from the demo machine
-(`claude -p` with the same prompt as `ai-review.yml`) and say so in the lecture.
+If S7's AI comment never appears, read the `review` job log: an authentication or connection error
+means `CLAUDE_CODE_ENV` is wrong or incomplete. Fallback: run the review headless from the demo
+machine (`claude -p` with the same prompt as `ai-review.yml`) and say so in the lecture.
