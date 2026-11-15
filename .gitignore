@@ -11,3 +11,6 @@ coverage/
 
 # Task worktrees (dev workflow Stage 0)
 .claude/worktrees/
+
+# Playwright MCP output (screenshots, logs)
+.playwright-mcp/
