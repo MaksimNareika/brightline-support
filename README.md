@@ -14,8 +14,8 @@ raw notes ──▶ GitHub Issue ──▶ design ──▶ plan ──▶ build
 ```
 
 - Setup: [docs/setup.md](docs/setup.md)
-- Demo script: [docs/demo/runbook.md](docs/demo/runbook.md)
-- What "correct" means for the demo features: [docs/demo/test-plan.md](docs/demo/test-plan.md)
+- Demo guide, step by step (rehearsal, reset, live day): [docs/demo/walkthrough.md](docs/demo/walkthrough.md)
+- What "correct" means for the demo feature: [docs/demo/test-plan.md](docs/demo/test-plan.md)
 - Agent conventions: [CLAUDE.md](CLAUDE.md)
 - The agents, skills and guard hook: the `sf-sdlc` plugin in the `sf-sdlc-plugins` repo
 

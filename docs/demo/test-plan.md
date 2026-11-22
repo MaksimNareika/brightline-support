@@ -1,113 +1,95 @@
-# Demo test plan
+# Demo test plan — tier priority floor and badge
 
-What "correct" means for GH-2 (first-response SLA) and GH-3 (the change request), and how to check
-it in an org. Run by **you**, not by the agent: it is the independent check of what the pipeline
-built. The expected values follow the gate answer key in `runbook.md`; if a gate was answered
-differently, change this file first.
+What "correct" means for the demo feature, and how to check it in the task's scratch org. **You**
+run it, not the agent: it's the independent check of what the pipeline built. Run it at step B13
+of [walkthrough.md](walkthrough.md), before you answer Gate 3. A failure goes back as
+`change <what>` at Gate 3, not as a fix by hand.
 
-Field, class and permission names come from `sdlc/GH-2/15-design.md`. They are written here as
-`<RespondBy>`, `<Breached>`, `<EscalationJob>`, `<BypassPermSet>` — replace them after the dry run.
+The expected values follow the [gate answer key](walkthrough.md#gate-answer-key). If a gate was
+answered differently, change this file first.
+
+Replace `<n>` with the issue number (`so-GH-14`, for example). Names the design chooses are
+written as `<FloorType>` (the custom metadata type) and `<Badge>` (the LWC). Read them from
+`sdlc/GH-<n>/15-design.md`.
 
 ## 1. Expected values
 
-Business hours: default record, Mon–Fri 09:00–18:00. Values are **business** hours between the
-case's `CreatedDate` and its respond-by time.
+| Tier | Priority chosen | Priority saved | Badge |
+|---|---|---|---|
+| Platinum | Low / Medium / High | **High** / **High** / High | purple pill `Platinum`, line `Minimum priority: High` |
+| Gold | Low / Medium / High | **Medium** / Medium / High | amber pill `Gold`, line `Minimum priority: Medium` |
+| Standard | Low / Medium / High | Low / Medium / High (unchanged) | grey pill `Standard`, no minimum line |
+| *(blank)* | Low | Low; tier becomes `Standard` (existing rule) | grey pill `Standard` |
 
-| Tier | High | Medium | Low | GH-2 multiplier | GH-3 multiplier |
-|---|---|---|---|---|---|
-| Standard | 2 | 8 | 24 | 1.0 | 1.0 |
-| Gold | 2 → **1.5** | 8 → **6** | 24 → **18** | 1.0 | **0.75** |
-| Platinum | 1 | 4 | 12 | 0.5 | 0.5 |
+The rule only raises. It applies on create, and on every save that changes priority or tier.
 
-Badge on the case page:
+## 2. In-org checks
 
-| Time left | GH-2 | GH-3 |
-|---|---|---|
-| 30 min or more | countdown, neutral | countdown, neutral |
-| under 30 min | countdown, neutral | **amber** |
-| overdue | red | red |
-
-### The check script
-
-A respond-by time depends on when the case was created, so compare **business-hour differences**,
-not clock times. Save as `scripts/demo/check-sla.apex` once the field names are known:
-
-```apex
-// Prints the business hours between CreatedDate and the respond-by time of every test case.
-Id bh = [SELECT Id FROM BusinessHours WHERE IsDefault = true].Id;
-for (Case c : [SELECT CaseNumber, Subject, Priority, Customer_Tier__c, CreatedDate, <RespondBy>
-               FROM Case WHERE Subject LIKE 'SLA-TEST%' ORDER BY Subject]) {
-    Object rb = c.get('<RespondBy>');
-    String hours = rb == null ? 'none'
-        : String.valueOf((BusinessHours.diff(bh, c.CreatedDate, (Datetime) rb) / 60000) / 60.0);
-    System.debug('SLA ' + c.Subject + ' | ' + c.Customer_Tier__c + '/' + c.Priority + ' = ' + hours + ' h');
-}
-```
-
-```bash
-sf apex run --target-org <org> --file scripts/demo/check-sla.apex | grep 'SLA '
-```
-
-Allow ±1 minute.
+All commands run in the **private terminal** from the task's worktree
+(`.claude/worktrees/GH-<n>`). Badge checks are in the Playwright window, which is already logged
+in (walkthrough B7).
 
 ### Test data
 
 ```bash
-# one case per tier × priority, subjects SLA-TEST-<tier>-<priority>
+# one case per tier × priority, subjects FLOOR-<tier>-<priority>
 for t in Standard Gold Platinum; do for p in High Medium Low; do
-  sf data create record --target-org <org> --sobject Case \
-    --values "Subject='SLA-TEST-$t-$p' Priority=$p Customer_Tier__c=$t Status=New Origin=Web"
+  sf data create record --target-org so-GH-<n> --sobject Case \
+    --values "Subject='FLOOR-$t-$p' Priority=$p Customer_Tier__c=$t Status=New Origin=Web"
 done; done
+sf data create record --target-org so-GH-<n> --sobject Case \
+  --values "Subject='FLOOR-blank-Low' Priority=Low Status=New Origin=Web"
+
+# what was saved
+sf data query --target-org so-GH-<n> \
+  -q "SELECT Subject, Customer_Tier__c, Priority FROM Case WHERE Subject LIKE 'FLOOR-%' AND (NOT Subject LIKE 'FLOOR-BULK%') ORDER BY Subject"
 ```
 
-Clean up at the end: `sf data delete bulk --target-org <org> --sobject Case --file <ids.csv>`, or
-delete the scratch org.
-
-## 2. GH-2 — first-response SLA
+### Checks
 
 | Id | Case | Steps | Expected |
 |---|---|---|---|
-| T2-01..09 | Targets per tier × priority | create the test data; run the check script | the GH-2 column of §1: Standard and Gold 2 / 8 / 24, Platinum 1 / 4 / 12 |
-| T2-10 | No tier | create `SLA-TEST-blank-High` without `Customer_Tier__c` | tier becomes `Standard`; 2 h |
-| T2-11 | Priority change recalculates | change `SLA-TEST-Standard-Low` to High | check script: 2 h |
-| T2-12 | Integration user excluded | `sf org assign permset --name <BypassPermSet> --target-org <org>`; create `SLA-TEST-bypass-High`; remove the assignment afterwards | `<RespondBy>` empty |
-| T2-13 | Bulk 251 | anonymous Apex: insert 251 cases, mixed tiers and priorities, subject `SLA-TEST-BULK-<i>` | no error; `SELECT COUNT() FROM Case WHERE Subject LIKE 'SLA-TEST-BULK%' AND <RespondBy> = null` returns 0 |
-| T2-14 | Late, not replied | set `<RespondBy>` of `SLA-TEST-Gold-High` (Status `New`) to an hour ago: `sf data update record --sobject Case --where "Subject='SLA-TEST-Gold-High'" --values "<RespondBy>=$(date -u -v-1H +%Y-%m-%dT%H:%M:%SZ)" --target-org <org>`; run `<EscalationJob>` on demand | Owner = `Escalations` queue; `<Breached>` = true |
-| T2-15 | Late, already replied | same for `SLA-TEST-Gold-Medium`, but first set Status to `Working` | owner unchanged; `<Breached>` = false |
-| T2-16 | Badge | open `SLA-TEST-Standard-Medium` (future) and `SLA-TEST-Gold-High` (overdue) | countdown neutral; overdue red |
-| T2-17 | Agent access | log in as, or check, the `Support_Agent` permission set | it grants read on the new fields; the badge renders for an agent |
-| T2-18 | Apex tests | `sf apex run test --target-org <org> --test-level RunLocalTests --code-coverage --wait 10` | all pass |
-| T2-19 | Tests prove the rule | in the scratch org only: set the Platinum multiplier record to 1.0, rerun the tests, then set it back | at least one test **fails** and names Platinum. If all still pass, the tests assert what the code does, not the AC — send it back at Gate 3 |
-| T2-20 | Artifacts | read `sdlc/GH-2/25-tests.md` | an inversion table: every AC has a test that fails when the rule is inverted |
+| T1 | Platinum is raised | the query above | `FLOOR-Platinum-Low` and `FLOOR-Platinum-Medium` are **High** |
+| T2 | Gold is raised | same | `FLOOR-Gold-Low` is **Medium** |
+| T3 | Higher stays higher | same | `FLOOR-Gold-High` is High: the rule never lowers |
+| T4 | Standard untouched | same | `FLOOR-Standard-*` keep High / Medium / Low |
+| T5 | No tier | same | `FLOOR-blank-Low`: tier `Standard`, priority Low |
+| T6 | Lowering on update | `sf data update record --target-org so-GH-<n> --sobject Case --where "Subject='FLOOR-Platinum-High'" --values "Priority=Low"`, then rerun the query | still **High**, no error |
+| T7 | Tier change | `sf data update record --target-org so-GH-<n> --sobject Case --where "Subject='FLOOR-Standard-Low'" --values "Customer_Tier__c=Platinum"`, then rerun the query | now **High** |
+| T8 | Bulk 251 | anonymous Apex below, then the count query | no error; Standard/Low 84, Gold/Medium 84, Platinum/High 83 |
+| T9 | Configuration, not code | in the Playwright window: Setup → Custom Metadata Types → `<FloorType>` → Manage Records → Gold → set the minimum to **High** → Save. Create `FLOOR-Gold-Low-2` (Gold, Low). Then set the record back to Medium | `FLOOR-Gold-Low-2` is saved as **High**: the rule reads the record, not a constant |
+| T10 | Badge, Platinum | open `FLOOR-Platinum-Low` in the Playwright window | purple `Platinum` pill; `Minimum priority: High` |
+| T11 | Badge, Gold and Standard | open `FLOOR-Gold-Low`, then `FLOOR-Standard-Low` | amber `Gold` + `Minimum priority: Medium`; grey `Standard`, no minimum line |
+| T12 | Agent access | `sf data query --target-org so-GH-<n> -q "SELECT SetupEntityId FROM SetupEntityAccess WHERE Parent.Name = 'Support_Agent' AND SetupEntityType = 'ApexClass'"`, then compare with the badge's Apex class in `35-metadata.md` | the badge's controller class is granted by `Support_Agent`, not by a profile |
+| T13 | Apex tests | `sf apex run test --target-org so-GH-<n> --test-level RunLocalTests --code-coverage --wait 10` | all pass |
+| T14 | Tests prove the rule | as in T9, set the **Platinum** record's minimum to **Low**; rerun T13; set it back to High | at least one test **fails** and names Platinum. If all still pass, the tests check what the code does, not the AC: send it back at Gate 3 |
+| T15 | LWC test | `npm run test:unit` | the badge's Jest test passes |
+| T16 | Artifacts | read `sdlc/GH-<n>/25-tests.md` and `30-review.md` | an inversion table (every AC has a test that fails when the rule is broken); review verdict `Ready for human review` |
 
-**Smoke subset in `fde-test`** (after CI deploys it): T2-02, T2-05, T2-08, T2-14, T2-16. Agents
-cannot write data in `fde-test`; you run these.
+### Bulk insert (T8)
 
-## 3. GH-3 — change request
+```bash
+cat > /tmp/floor-bulk.apex <<'EOF'
+List<String> tiers = new List<String>{ 'Standard', 'Gold', 'Platinum' };
+List<Case> cases = new List<Case>();
+for (Integer i = 0; i < 251; i++) {
+    cases.add(new Case(Subject = 'FLOOR-BULK-' + i, Priority = 'Low', Status = 'New',
+                       Origin = 'Web', Customer_Tier__c = tiers[Math.mod(i, 3)]));
+}
+insert cases;
+EOF
+sf apex run --target-org so-GH-<n> --file /tmp/floor-bulk.apex | grep -iE 'success|error'
+sf data query --target-org so-GH-<n> \
+  -q "SELECT Customer_Tier__c, Priority, COUNT(Id) n FROM Case WHERE Subject LIKE 'FLOOR-BULK%' GROUP BY Customer_Tier__c, Priority"
+```
 
-Run after the build in `so-GH-3`, before Gate 3, then the smoke subset in `fde-test` after the merge.
+No cleanup needed: the scratch org is deleted in walkthrough C5.
 
-| Id | Case | Steps | Expected |
-|---|---|---|---|
-| T3-01..03 | Gold targets | test data + check script | Gold 1.5 / 6 / 18 |
-| T3-04 | Nothing else changed | same run | Standard 2 / 8 / 24, Platinum 1 / 4 / 12 |
-| T3-05 | Amber | set `<RespondBy>` of a New case to now + 20 min (`date -u -v+20M +%Y-%m-%dT%H:%M:%SZ`); open it | amber countdown |
-| T3-06 | Neutral above 30 min | now + 45 min | neutral |
-| T3-07 | Red | an hour ago | red |
-| T3-08 | Boundary | read the LWC Jest test | cases at 29:59 (amber) and 30:00 (neutral) exist and pass: `npm run test:unit` |
-| T3-09 | Configuration, not code | `git diff origin/test --stat` on the feature branch | the Gold change is a custom metadata record; no Apex constant changed |
-| T3-10 | The spec change is visible | open the GH-2 issue | a comment or edit naming the changed AC; the GH-3 issue links to it |
-| T3-11 | Regression | T2-12 to T2-15, T2-18 | still pass |
-
-**Smoke subset in `fde-test`:** T3-02, T3-04 (one Platinum case), T3-05.
-
-## 4. Pipeline checks
+## 3. Pipeline checks (walkthrough B15)
 
 | Id | Where | Expected |
 |---|---|---|
-| P1 | PR to `test` → `static` | Jest, Code Analyzer, risk scan green |
-| P2 | `validate` | deploy validation with `RunLocalTests` green against `fde-test`; artifact `validated-job-id` uploaded |
+| P1 | PR to `test` → `static` | first red: *permission metadata changed … add the 'permissions-reviewed' label*. After you review the permission diff and add the label: Jest, Code Analyzer, risk scan green |
+| P2 | `validate` | check-only deploy with `RunLocalTests` green against `fde-test`; artifact `validated-job-id` uploaded |
 | P3 | AI review | exactly one comment in the `REVIEW.md` format; the job had no Salesforce secrets |
-| P4 | merge → `Deploy` | step **Quick deploy the validated job** succeeded; the full deploy step was skipped |
-| P5 | PR to `main` → merge | `validate` and `Deploy` both wait for the `prod` reviewer; nothing reaches `fde-prod` before approval |
-| P6 | failed `validate` | the merge is blocked; the job log names the component, the line and the cause (setup smoke test S9) |
+| P4 | `fde-test` unchanged after the rehearsal | a new Platinum Low case in `fde-test` stays **Low**: the PR was never merged, so the feature isn't in QA |
