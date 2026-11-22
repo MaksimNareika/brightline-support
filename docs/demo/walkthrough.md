@@ -594,6 +594,9 @@ Part A (A1–A5) again, plus the CI checks:
 - [ ] `fallback/priority-floor` exists on GitHub; the rehearsal's `<r>` noted (for D4)
 - [ ] Demo macOS user; notifications off; terminal and editor font 18+
 - [ ] Off screen: `gh auth status` shows the account that owns the repos
+- [ ] Browser signed in to GitHub as the repo owner, **`MaksimNareika`** (avatar, top right). Not
+      `maksim-EpicGames`: that account has read access only, so its merge button says *Merging is
+      blocked* even when every check is green, and it can't approve the `prod` environment
 - [ ] Private terminal open in `brightline-support/`, not shared
 - [ ] Claude session in a terminal, in `brightline-support/`, on `test`, `/clear`ed
 - [ ] Second Claude session in a terminal, in `brightline-support/` (for B10)
