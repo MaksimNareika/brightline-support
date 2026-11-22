@@ -466,8 +466,12 @@ Do this **while B11 builds**, so the wait has content.
   ```
   The label reruns the checks. The guard blocks the agent from adding it.
 - **You should see:** `static` and `validate` green; one AI review comment within ~5 minutes.
-- **If it goes wrong:** `validate` red → `gh run view <run-id> --log` names the component and line.
-  Tell the Claude session to fix it in the worktree and push; checks rerun.
+- **If it goes wrong:**
+  - `validate` red → `gh run view <run-id> --log` names the component and line. Tell the Claude
+    session to fix it in the worktree and push; checks rerun.
+  - `review` red with `401 Portkey Error: Invalid API Key` → the CI copy of the Claude gateway
+    key is stale or incomplete. Fix it as in [D4](#d4--if-a-step-stalls). `review` isn't a required
+    check, so it never blocks the merge.
 
 **The run ends here.** Rehearsal: go to Part C. Live: close with the PR and the checks; the release
 to production is explained on the slide (appendix *CI*), not run.
@@ -579,7 +583,7 @@ Part A (A1–A5) again, plus the CI checks:
 | R2 | CI can reach `fde-test` | `gh run list --workflow pr-validate.yml --limit 1` | the last run is ✓ and newer than the last `fde-test` recreation; else `bash scripts/fde-test-ci-auth.sh` |
 | R3 | Required checks on `test` and `main` | `for b in main test; do gh api repos/MaksimNareika/brightline-support/branches/$b/protection --jq '.required_status_checks.contexts'; done` | `["static","validate"]` for both |
 | R4 | Claude locally | `claude -p "say ok"` | `ok` |
-| R5 | AI review in CI | the rehearsal PR has an AI review comment | a comment exists |
+| R5 | AI review in CI | the rehearsal PR has an AI review comment | a comment exists. If `review` failed with a 401: the fix in D4, then `gh run rerun <run-id> --failed` |
 | R6 | Guard | `bash ../sf-sdlc-plugins/plugins/sf-sdlc/hooks/guard.test.sh` | `0 failed` |
 | R7 | Part C is still clean | C8 table | all clean |
 
@@ -619,6 +623,7 @@ The agent works while you talk; each gate is where the lecture comes back to the
 | B6 org creation | wait for the rerun; if no slot, A3. Meanwhile continue to Gate 2: the plan doesn't need the org |
 | B11–B13 build | **you**, in the private terminal: `cd .claude/worktrees/GH-<n> && git fetch origin && git checkout origin/fallback/priority-floor -- force-app && sf project deploy start --target-org so-GH-<n> --source-dir force-app`. Then open a Platinum case in the Playwright window, and show the rehearsal's review: `git show origin/fallback/priority-floor:sdlc/GH-<r>/30-review.md` |
 | B15 CI slow | show the rehearsal's closed PR `<pr>` (its checks and AI comment) |
+| B15 `review` fails: `401 Portkey Error: Invalid API Key` | The repo secrets hold an old or incomplete copy of the gateway key. Your local Claude works, so copy its three values into the secrets. In the private terminal (values go straight from `jq` to `gh`, nothing is printed): `for k in ANTHROPIC_BASE_URL ANTHROPIC_AUTH_TOKEN ANTHROPIC_CUSTOM_HEADERS; do jq -r --arg k "$k" '.env[$k]' ~/.claude/settings.json \| gh secret set "$k"; done`, then `gh run rerun <run-id> --failed` (the run id is in the failed job's URL, or `gh run list --workflow ai-review.yml --limit 1`). Don't paste the headers into the interactive `gh secret set` prompt: it keeps only the first line, and `x-portkey-api-key` is the last of five. Only you can run this; the guard blocks the agent from writing secrets |
 
 ### D5 — After the session
 
