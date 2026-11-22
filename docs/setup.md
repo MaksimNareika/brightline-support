@@ -181,7 +181,8 @@ Write `fde-test`'s expiry date into your prep notes.
 ### Recreating `fde-test`
 
 A scratch org cannot be extended. Recreate `fde-test` when its expiry date is before the next demo
-phase you need it for — at the latest before phase A, so it lasts through the lecture (runbook).
+phase you need it for — at the latest before the rehearsal, so it lasts through the lecture
+(walkthrough A2).
 It costs one daily scratch-org slot and about the time of one full deploy.
 
 ```bash
@@ -217,8 +218,8 @@ In a terminal session the same is `/plugin marketplace add MaksimNareika/sf-sdlc
 **Check:** `claude plugin list` shows `sf-sdlc@fde-sdlc`, version 0.2.0 or later, enabled; in a
 session, `/agents` lists the eight `sdlc-*` agents and typing `/sf-sdlc:` offers `architect-flow`
 and `dev-workflow`; `bash ../sf-sdlc-plugins/plugins/sf-sdlc/hooks/guard.test.sh` prints
-`0 failed`. Keep it installed for the smoke test and the dry run; remove it before the lecture
-(runbook F5).
+`0 failed`. Keep it installed for the smoke test; remove it before the rehearsal and again before
+the lecture, because installing it is a step of the demo (walkthrough A4, C7).
 
 When the plugin changes (its version goes up): `claude plugin marketplace update fde-sdlc`, then
 `claude plugin update sf-sdlc@fde-sdlc`, then `/reload-plugins`.
